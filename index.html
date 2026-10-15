@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Afinador Profesional</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f8fafc;
+      --accent-green: #22c55e;
+      --accent-red: #ef4444;
+      --accent-blue: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .tuner-container {
+      background-color: var(--card-bg);
+      border-radius: 24px;
+      padding: 30px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      color: #94a3b8;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .gauge {
+      position: relative;
+      width: 240px;
+      height: 120px;
+      margin: 0 auto 20px auto;
+      overflow: hidden;
+    }
+
+    .gauge-bg {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 12px solid #334155;
+      border-bottom-color: transparent;
+      border-left-color: transparent;
+      transform: rotate(-135deg);
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .needle {
+      width: 4px;
+      height: 100px;
+      background-color: #cbd5e1;
+      position: absolute;
+      bottom: 0;
+      left: 118px;
+      transform-origin: bottom center;
+      transform: rotate(0deg);
+      transition: transform 0.1s ease-out, background-color 0.2s ease;
+      border-radius: 2px;
+    }
+
+    .note-display {
+      font-size: 4.5rem;
+      font-weight: 800;
+      margin-bottom: 5px;
+      height: 90px;
+      line-height: 90px;
+    }
+
+    .detune-info {
+      font-size: 1rem;
+      color: #94a3b8;
+      margin-bottom: 25px;
+      height: 24px;
+    }
+
+    .frequency {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      margin-bottom: 25px;
+    }
+
+    .btn {
+      background-color: var(--accent-blue);
+      color: white;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .string-guide {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid #334155;
+    }
+
+    .string-item {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="tuner-container">
+    <h1>Afinador Cromático</h1>
+    
+    <div class="gauge">
+      <div class="gauge-bg"></div>
+      <div class="needle" id="needle"></div>
+    </div>
+
+    <div class="note-display" id="noteDisplay">--</div>
+    <div class="detune-info" id="detuneInfo">Presiona Iniciar</div>
+    <div class="frequency" id="freqDisplay">0.0 Hz</div>
+
+    <button class="btn" id="startBtn">Iniciar Micrófono</button>
+
+    <div class="string-guide">
+      <span class="string-item">E2</span>
+      <span class="string-item">A2</span>
+      <span class="string-item">D3</span>
+      <span class="string-item">G3</span>
+      <span class="string-item">B3</span>
+      <span class="string-item">E4</span>
+    </div>
+  </div>
+
+  <script>
+    const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let audioCtx = null;
+    let analyser = null;
+    let mediaStreamSource = null;
+    let isListening = false;
+    let buf = new Float32Array(2048);
+
+    const startBtn = document.getElementById('startBtn');
+    const noteDisplay = document.getElementById('noteDisplay');
+    const detuneInfo = document.getElementById('detuneInfo');
+    const freqDisplay = document.getElementById('freqDisplay');
+    const needle = document.getElementById('needle');
+
+    startBtn.addEventListener('click', () => {
+      if (!isListening) {
+        startTuner();
+      } else {
+        stopTuner();
+      }
+    });
+
+    async function startTuner() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        
+        mediaStreamSource = audioCtx.createMediaStreamSource(stream);
+        mediaStreamSource.connect(analyser);
+
+        isListening = true;
+        startBtn.textContent = "Detener";
+        startBtn.style.backgroundColor = "#ef4444";
+        updatePitch();
+      } catch (err) {
+        alert("Error al acceder al micrófono. Por favor permite los permisos.");
+        console.error(err);
+      }
+    }
+
+    function stopTuner() {
+      if (mediaStreamSource && mediaStreamSource.mediaStream) {
+        mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
+      }
+      if (audioCtx) audioCtx.close();
+      isListening = false;
+      startBtn.textContent = "Iniciar Micrófono";
+      startBtn.style.backgroundColor = "var(--accent-blue)";
+      resetUI();
+    }
+
+    function autoCorrelate(buf, sampleRate) {
+      let SIZE = buf.length;
+      let rms = 0;
+
+      for (let i = 0; i < SIZE; i++) {
+        let val = buf[i];
+        rms += val * val;
+      }
+      rms = Math.sqrt(rms / SIZE);
+      if (rms < 0.01) return -1; // Señal muy débil / silencio
+
+      let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+      for (let i = 0; i < SIZE / 2; i++) {
+        if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+      }
+      for (let i = 1; i < SIZE / 2; i++) {
+        if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+      }
+
+      buf = buf.slice(r1, r2);
+      SIZE = buf.length;
+
+      let c = new Array(SIZE).fill(0);
+      for (let i = 0; i < SIZE; i++) {
+        for (let j = 0; j < SIZE - i; j++) {
+          c[i] = c[i] + buf[j] * buf[j + i];
+        }
+      }
+
+      let d = 0;
+      while (c[d] > c[d + 1]) d++;
+      let maxval = -1, maxpos = -1;
+      for (let i = d; i < SIZE; i++) {
+        if (c[i] > maxval) {
+          maxval = c[i];
+          maxpos = i;
+        }
+      }
+      let T0 = maxpos;
+
+      // Interpolación parabólica para precisión
+      let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+      let a = (x1 + x3 - 2 * x2) / 2;
+      let b = (x3 - x1) / 2;
+      if (a) T0 = T0 - b / (2 * a);
+
+      return sampleRate / T0;
+    }
+
+    function noteFromPitch(frequency) {
+      let noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
+      return Math.round(noteNum) + 69;
+    }
+
+    function frequencyFromNoteNumber(note) {
+      return 440 * Math.pow(2, (note - 69) / 12);
+    }
+
+    function centsFromPitchAndNote(frequency, note) {
+      return Math.floor(1200 * Math.log(frequency / frequencyFromNoteNumber(note)) / Math.log(2));
+    }
+
+    function updatePitch() {
+      if (!isListening) return;
+
+      analyser.getFloatTimeDomainData(buf);
+      let pitch = autoCorrelate(buf, audioCtx.sampleRate);
+
+      if (pitch === -1) {
+        noteDisplay.textContent = "--";
+        detuneInfo.textContent = "Escuchando...";
+        freqDisplay.textContent = "0.0 Hz";
+        needle.style.transform = "rotate(0deg)";
+        needle.style.backgroundColor = "#cbd5e1";
+      } else {
+        let note = noteFromPitch(pitch);
+        let noteName = NOTE_STRINGS[note % 12];
+        let cents = centsFromPitchAndNote(pitch, note);
+
+        noteDisplay.textContent = noteName;
+        freqDisplay.textContent = pitch.toFixed(1) + " Hz";
+
+        // Ajuste de aguja (-50 cents a +50 cents -> -45deg a +45deg)
+        let rotation = Math.max(-45, Math.min(45, cents * 0.9));
+        needle.style.transform = `rotate(${rotation}deg)`;
+
+        if (Math.abs(cents) < 5) {
+          detuneInfo.textContent = "¡AFINADO!";
+          detuneInfo.style.color = "var(--accent-green)";
+          needle.style.backgroundColor = "var(--accent-green)";
+        } else if (cents < 0) {
+          detuneInfo.textContent = `Bajo (${cents} cents)`;
+          detuneInfo.style.color = "var(--accent-red)";
+          needle.style.backgroundColor = "var(--accent-red)";
+        } else {
+          detuneInfo.textContent = `Alto (+${cents} cents)`;
+          detuneInfo.style.color = "var(--accent-red)";
+          needle.style.backgroundColor = "var(--accent-red)";
+        }
+      }
+
+      requestAnimationFrame(updatePitch);
+    }
+
+    function resetUI() {
+      noteDisplay.textContent = "--";
+      detuneInfo.textContent = "Presiona Iniciar";
+      detuneInfo.style.color = "#94a3b8";
+      freqDisplay.textContent = "0.0 Hz";
+      needle.style.transform = "rotate(0deg)";
+      needle.style.backgroundColor = "#cbd5e1";
+    }
+  </script>
+</body>
+</html>
