@@ -3,332 +3,794 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Afinador Profesional</title>
+  <title>Afinador Multi-Instrumento Pro</title>
   <style>
     :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --text-color: #f8fafc;
-      --accent-green: #22c55e;
-      --accent-red: #ef4444;
-      --accent-blue: #3b82f6;
+      --bg-color: #12151c;
+      --card-bg: #1c202b;
+      --accent-green: #00e676;
+      --accent-red: #ff5252;
+      --accent-orange: #ffab40;
+      --accent-blue: #00b0ff;
+      --text-main: #ffffff;
+      --text-muted: #8e99a8;
+      --border-color: #2a3140;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      user-select: none;
     }
 
     body {
       background-color: var(--bg-color);
-      color: var(--text-color);
+      color: var(--text-main);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       min-height: 100vh;
-      padding: 20px;
+      padding: 12px 10px;
+      overflow-x: hidden;
     }
 
-    .tuner-container {
+    /* Selector de Instrumento Superior */
+    .instrument-tabs {
+      display: flex;
       background-color: var(--card-bg);
-      border-radius: 24px;
-      padding: 30px;
+      border-radius: 25px;
+      padding: 3px;
+      border: 1px solid var(--border-color);
       width: 100%;
-      max-width: 380px;
+      max-width: 340px;
+      margin-bottom: 6px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 8px 4px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
       text-align: center;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     }
 
-    h1 {
-      font-size: 1.2rem;
-      color: #94a3b8;
-      margin-bottom: 20px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+      color: #000;
+      box-shadow: 0 2px 10px rgba(0, 230, 118, 0.3);
     }
 
-    .gauge {
+    /* Submodos (Auto/Manual y Afinaciones) */
+    .submode-bar {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      max-width: 340px;
+      margin-bottom: 6px;
+    }
+
+    .submode-toggle {
+      display: flex;
+      flex: 1;
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 2px;
+      border: 1px solid var(--border-color);
+    }
+
+    .submode-btn {
+      flex: 1;
+      padding: 6px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 14px;
+      cursor: pointer;
+    }
+
+    .submode-btn.active {
+      background-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    /* Medidor de Aguja */
+    .gauge-container {
       position: relative;
-      width: 240px;
-      height: 120px;
-      margin: 0 auto 20px auto;
-      overflow: hidden;
+      width: 260px;
+      height: 135px;
+      margin: 2px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
     }
 
-    .gauge-bg {
-      width: 240px;
-      height: 240px;
-      border-radius: 50%;
-      border: 12px solid #334155;
-      border-bottom-color: transparent;
-      border-left-color: transparent;
-      transform: rotate(-135deg);
+    .gauge-arc {
       position: absolute;
       top: 0;
-      left: 0;
+      width: 240px;
+      height: 120px;
+      border-top-left-radius: 120px;
+      border-top-right-radius: 120px;
+      border: 5px solid var(--border-color);
+      border-bottom: none;
+      background: radial-gradient(circle at 50% 100%, rgba(255,255,255,0.03), transparent 70%);
+    }
+
+    .center-mark {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 4px;
+      height: 12px;
+      background-color: var(--accent-green);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--accent-green);
     }
 
     .needle {
-      width: 4px;
-      height: 100px;
-      background-color: #cbd5e1;
       position: absolute;
-      bottom: 0;
-      left: 118px;
+      bottom: 18px;
+      left: 50%;
+      width: 4px;
+      height: 90px;
+      background: linear-gradient(to top, var(--text-muted), var(--text-main));
       transform-origin: bottom center;
-      transform: rotate(0deg);
-      transition: transform 0.1s ease-out, background-color 0.2s ease;
+      transform: translateX(-50%) rotate(0deg);
+      transition: transform 0.1s cubic-bezier(0.1, 0.3, 0.1, 1.0);
       border-radius: 2px;
     }
 
+    .needle.in-tune {
+      background: var(--accent-green);
+      box-shadow: 0 0 14px var(--accent-green);
+    }
+
+    .needle-pivot {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 15px;
+      height: 15px;
+      background-color: var(--card-bg);
+      border: 3px solid var(--text-muted);
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    /* Visualización de Nota & Frecuencia */
     .note-display {
-      font-size: 4.5rem;
+      text-align: center;
+      margin: 2px 0;
+    }
+
+    .note-name {
+      font-size: 3.2rem;
       font-weight: 800;
-      margin-bottom: 5px;
-      height: 90px;
-      line-height: 90px;
+      line-height: 1;
+      color: var(--text-main);
+      transition: color 0.2s;
     }
 
-    .detune-info {
+    .note-name.in-tune {
+      color: var(--accent-green);
+      text-shadow: 0 0 15px rgba(0, 230, 118, 0.4);
+    }
+
+    .frequency-text {
       font-size: 1rem;
-      color: #94a3b8;
-      margin-bottom: 25px;
-      height: 24px;
-    }
-
-    .frequency {
-      font-size: 1.2rem;
+      color: var(--text-muted);
       font-weight: 600;
-      color: var(--accent-blue);
-      margin-bottom: 25px;
+      margin-top: 3px;
     }
 
-    .btn {
-      background-color: var(--accent-blue);
-      color: white;
-      border: none;
-      padding: 16px 32px;
-      font-size: 1.1rem;
-      font-weight: 700;
-      border-radius: 50px;
-      cursor: pointer;
+    .cents-text {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* Grid de Cuerdas (Guitarra & Charango) */
+    .headstock {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 25px;
       width: 100%;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.4);
+      max-width: 320px;
+      margin: 6px 0;
     }
 
-    .btn:active {
-      transform: scale(0.98);
-    }
-
-    .string-guide {
+    .string-btn {
+      background-color: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 8px;
       display: flex;
-      justify-content: space-between;
-      margin-top: 25px;
-      padding-top: 15px;
-      border-top: 1px solid #334155;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: var(--text-main);
     }
 
-    .string-item {
-      font-size: 0.85rem;
-      color: #64748b;
-      font-weight: 600;
+    .string-btn.selected {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 10px rgba(0, 230, 118, 0.2);
+      background-color: rgba(0, 230, 118, 0.05);
+    }
+
+    .string-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .string-desc {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+
+    /* Piano Realista (Modo Cromático) */
+    .piano-container {
+      display: none;
+      position: relative;
+      width: 100%;
+      max-width: 330px;
+      height: 120px;
+      margin: 6px auto;
+      background-color: #0d0f14;
+      border-radius: 12px;
+      padding: 6px;
+      border: 1px solid var(--border-color);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+    }
+
+    .piano-keys-wrapper {
+      position: relative;
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    .white-key {
+      flex: 1;
+      background: linear-gradient(to bottom, #ffffff 0%, #e6ecf2 100%);
+      border: 1px solid #1c202b;
+      border-radius: 0 0 5px 5px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      padding-bottom: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: #1a202c;
+      box-shadow: 0 3px 5px rgba(0,0,0,0.3);
+      transition: all 0.1s ease;
+      z-index: 1;
+    }
+
+    .white-key:active, .white-key.selected {
+      background: linear-gradient(to bottom, #00e676 0%, #00b0ff 100%) !important;
+      color: #000 !important;
+      box-shadow: 0 0 12px var(--accent-green);
+      transform: translateY(2px);
+    }
+
+    .black-key {
+      position: absolute;
+      top: 0;
+      width: 9%;
+      height: 58%;
+      background: linear-gradient(to bottom, #2c3240 0%, #11141a 100%);
+      border: 1px solid #000;
+      border-radius: 0 0 4px 4px;
+      cursor: pointer;
+      z-index: 2;
+      box-shadow: 2px 3px 6px rgba(0,0,0,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      transition: all 0.1s ease;
+    }
+
+    .black-key:active, .black-key.selected {
+      background: var(--accent-green) !important;
+      color: #000 !important;
+      box-shadow: 0 0 10px var(--accent-green);
+      transform: translateY(2px);
+    }
+
+    /* Botón Principal */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 330px;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-main {
+      background: linear-gradient(135deg, var(--accent-green), var(--accent-blue));
+      border: none;
+      border-radius: 30px;
+      color: #000;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 12px;
+      width: 100%;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 230, 118, 0.3);
     }
   </style>
 </head>
 <body>
 
-  <div class="tuner-container">
-    <h1>Afinador Cromático</h1>
-    
-    <div class="gauge">
-      <div class="gauge-bg"></div>
-      <div class="needle" id="needle"></div>
+  <!-- Selector de Instrumento -->
+  <div class="instrument-tabs">
+    <button class="tab-btn active" id="tabGuitar" onclick="switchInstrument('guitar')">🎸 Guitarra</button>
+    <button class="tab-btn" id="tabCharango" onclick="switchInstrument('charango')">🪕 Charango</button>
+    <button class="tab-btn" id="tabChromatic" onclick="switchInstrument('chromatic')">🎹 Piano / Cromático</button>
+  </div>
+
+  <!-- Barra de Submodos -->
+  <div class="submode-bar" id="submodeBar">
+    <div class="submode-toggle">
+      <button class="submode-btn active" id="subAuto" onclick="setSubmode('auto')">Auto</button>
+      <button class="submode-btn" id="subManual" onclick="setSubmode('manual')">Manual</button>
     </div>
-
-    <div class="note-display" id="noteDisplay">--</div>
-    <div class="detune-info" id="detuneInfo">Presiona Iniciar</div>
-    <div class="frequency" id="freqDisplay">0.0 Hz</div>
-
-    <button class="btn" id="startBtn">Iniciar Micrófono</button>
-
-    <div class="string-guide">
-      <span class="string-item">E2</span>
-      <span class="string-item">A2</span>
-      <span class="string-item">D3</span>
-      <span class="string-item">G3</span>
-      <span class="string-item">B3</span>
-      <span class="string-item">E4</span>
+    <!-- Selector de Afinación Guitarra -->
+    <div class="submode-toggle" id="tuningToggle">
+      <button class="submode-btn active" id="tuneStandard" onclick="setGuitarTuning('standard')">Estándar</button>
+      <button class="submode-btn" id="tuneDropD" onclick="setGuitarTuning('dropD')">Drop D</button>
     </div>
   </div>
 
+  <!-- Medidor de Aguja -->
+  <div class="gauge-container">
+    <div class="gauge-arc"></div>
+    <div class="center-mark"></div>
+    <div class="needle" id="needle"></div>
+    <div class="needle-pivot"></div>
+  </div>
+
+  <!-- Pantalla de Nota & Frecuencia -->
+  <div class="note-display">
+    <div class="note-name" id="noteName">--</div>
+    <div class="frequency-text" id="frequencyText">0.0 Hz</div>
+    <div class="cents-text" id="centsText">Presiona "Iniciar Micrófono"</div>
+  </div>
+
+  <!-- Clavijero Guitarra -->
+  <div class="headstock" id="guitarHeadstock">
+    <button class="string-btn" id="str-6th" onclick="selectString('str-6th', guitarTuningMode === 'dropD' ? 'D2' : 'E2', guitarTuningMode === 'dropD' ? 73.42 : 82.41)"><span class="string-name" id="name-6str">E2</span><span class="string-desc">6ª Cuerda</span></button>
+    <button class="string-btn" id="str-1st" onclick="selectString('str-1st', 'E4', 329.63)"><span class="string-name">E4</span><span class="string-desc">1ª Cuerda</span></button>
+    <button class="string-btn" id="str-5th" onclick="selectString('str-5th', 'A2', 110.00)"><span class="string-name">A2</span><span class="string-desc">5ª Cuerda</span></button>
+    <button class="string-btn" id="str-2nd" onclick="selectString('str-2nd', 'B3', 246.94)"><span class="string-name">B3</span><span class="string-desc">2ª Cuerda</span></button>
+    <button class="string-btn" id="str-4th" onclick="selectString('str-4th', 'D3', 146.83)"><span class="string-name">D3</span><span class="string-desc">4ª Cuerda</span></button>
+    <button class="string-btn" id="str-3rd" onclick="selectString('str-3rd', 'G3', 196.00)"><span class="string-name">G3</span><span class="string-desc">3ª Cuerda</span></button>
+  </div>
+
+  <!-- Clavijero Charango (Temple Natural con 3º Orden E4 Octava) -->
+  <div class="headstock" id="charangoHeadstock" style="display: none;">
+    <button class="string-btn" id="str-ch-G4" onclick="selectString('str-ch-G4', 'G4', 392.00)"><span class="string-name">G4 (Sol)</span><span class="string-desc">5º Orden</span></button>
+    <button class="string-btn" id="str-ch-E5" onclick="selectString('str-ch-E5', 'E5', 659.25)"><span class="string-name">E5 (Mi)</span><span class="string-desc">1º Orden</span></button>
+    <button class="string-btn" id="str-ch-C5" onclick="selectString('str-ch-C5', 'C5', 523.25)"><span class="string-name">C5 (Do)</span><span class="string-desc">4º Orden</span></button>
+    <button class="string-btn" id="str-ch-A4" onclick="selectString('str-ch-A4', 'A4', 440.00)"><span class="string-name">A4 (La)</span><span class="string-desc">2º Orden</span></button>
+    <button class="string-btn" id="str-ch-E4" onclick="selectString('str-ch-E4', 'E4', 329.63)" style="grid-column: span 2;"><span class="string-name">E4 (Mi)</span><span class="string-desc">3º Orden (Octava)</span></button>
+  </div>
+
+  <!-- Piano Teclado Realista (Modo Cromático) -->
+  <div class="piano-container" id="pianoContainer">
+    <div class="piano-keys-wrapper">
+      <!-- Teclas Blancas -->
+      <button class="white-key" id="pKey-C4" onclick="playPianoKey('C4', 261.63)">C4</button>
+      <button class="white-key" id="pKey-D4" onclick="playPianoKey('D4', 293.66)">D4</button>
+      <button class="white-key" id="pKey-E4" onclick="playPianoKey('E4', 329.63)">E4</button>
+      <button class="white-key" id="pKey-F4" onclick="playPianoKey('F4', 349.23)">F4</button>
+      <button class="white-key" id="pKey-G4" onclick="playPianoKey('G4', 392.00)">G4</button>
+      <button class="white-key" id="pKey-A4" onclick="playPianoKey('A4', 440.00)">A4</button>
+      <button class="white-key" id="pKey-B4" onclick="playPianoKey('B4', 493.88)">B4</button>
+      <!-- Teclas Negras Intercaladas -->
+      <button class="black-key" id="pKey-C#4" style="left: 9.5%;" onclick="playPianoKey('C#4', 277.18)">C#</button>
+      <button class="black-key" id="pKey-D#4" style="left: 23.8%;" onclick="playPianoKey('D#4', 311.13)">D#</button>
+      <button class="black-key" id="pKey-F#4" style="left: 52.3%;" onclick="playPianoKey('F#4', 369.99)">F#</button>
+      <button class="black-key" id="pKey-G#4" style="left: 66.6%;" onclick="playPianoKey('G#4', 415.30)">G#</button>
+      <button class="black-key" id="pKey-A#4" style="left: 80.9%;" onclick="playPianoKey('A#4', 466.16)">A#</button>
+    </div>
+  </div>
+
+  <!-- Botón Encender / Apagar -->
+  <div class="controls">
+    <button class="btn-main" id="micBtn" onclick="toggleMic()">Iniciar Micrófono</button>
+  </div>
+
   <script>
-    const NOTE_STRINGS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    // Arrays de Instrumentos
+    const guitarStandard = [
+      { id: "str-6th", name: "E2", freq: 82.41 },
+      { id: "str-5th", name: "A2", freq: 110.00 },
+      { id: "str-4th", name: "D3", freq: 146.83 },
+      { id: "str-3rd", name: "G3", freq: 196.00 },
+      { id: "str-2nd", name: "B3", freq: 246.94 },
+      { id: "str-1st", name: "E4", freq: 329.63 }
+    ];
+
+    const guitarDropD = [
+      { id: "str-6th", name: "D2", freq: 73.42 },
+      { id: "str-5th", name: "A2", freq: 110.00 },
+      { id: "str-4th", name: "D3", freq: 146.83 },
+      { id: "str-3rd", name: "G3", freq: 196.00 },
+      { id: "str-2nd", name: "B3", freq: 246.94 },
+      { id: "str-1st", name: "E4", freq: 329.63 }
+    ];
+
+    const charangoStrings = [
+      { id: "str-ch-G4", name: "G4", freq: 392.00 },
+      { id: "str-ch-C5", name: "C5", freq: 523.25 },
+      { id: "str-ch-E4", name: "E4", freq: 329.63 },
+      { id: "str-ch-A4", name: "A4", freq: 440.00 },
+      { id: "str-ch-E5", name: "E5", freq: 659.25 }
+    ];
+
+    const noteNames12 = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+    let activeInstrument = 'guitar'; // 'guitar', 'charango', 'chromatic'
+    let currentSubmode = 'auto'; // 'auto' o 'manual'
+    let guitarTuningMode = 'standard'; // 'standard' o 'dropD'
+    
+    let selectedBtnId = "str-6th";
+    let selectedManualName = "E2";
+    let selectedManualFreq = 82.41;
+
     let audioCtx = null;
     let analyser = null;
-    let mediaStreamSource = null;
+    let micStream = null;
     let isListening = false;
-    let buf = new Float32Array(2048);
+    let smoothFreq = 0;
 
-    const startBtn = document.getElementById('startBtn');
-    const noteDisplay = document.getElementById('noteDisplay');
-    const detuneInfo = document.getElementById('detuneInfo');
-    const freqDisplay = document.getElementById('freqDisplay');
-    const needle = document.getElementById('needle');
+    // Cambiar Instrumento
+    function switchInstrument(inst) {
+      activeInstrument = inst;
+      document.getElementById('tabGuitar').classList.toggle('active', inst === 'guitar');
+      document.getElementById('tabCharango').classList.toggle('active', inst === 'charango');
+      document.getElementById('tabChromatic').classList.toggle('active', inst === 'chromatic');
 
-    startBtn.addEventListener('click', () => {
-      if (!isListening) {
-        startTuner();
+      document.getElementById('guitarHeadstock').style.display = (inst === 'guitar') ? 'grid' : 'none';
+      document.getElementById('charangoHeadstock').style.display = (inst === 'charango') ? 'grid' : 'none';
+      document.getElementById('pianoContainer').style.display = (inst === 'chromatic') ? 'block' : 'none';
+      
+      document.getElementById('tuningToggle').style.display = (inst === 'guitar') ? 'flex' : 'none';
+
+      deselectAllButtons();
+      resetDisplay();
+    }
+
+    // Cambiar Afinación Guitarra (Standard vs Drop D)
+    function setGuitarTuning(type) {
+      guitarTuningMode = type;
+      document.getElementById('tuneStandard').classList.toggle('active', type === 'standard');
+      document.getElementById('tuneDropD').classList.toggle('active', type === 'dropD');
+
+      const name6 = document.getElementById('name-6str');
+      const btn6 = document.getElementById('str-6th');
+
+      if (type === 'dropD') {
+        if (name6) name6.textContent = "D2";
+        if (btn6) btn6.onclick = function() { selectString('str-6th', 'D2', 73.42); };
+        if (selectedBtnId === 'str-6th' || selectedManualName === 'E2') {
+          selectedManualName = "D2";
+          selectedManualFreq = 73.42;
+        }
       } else {
-        stopTuner();
+        if (name6) name6.textContent = "E2";
+        if (btn6) btn6.onclick = function() { selectString('str-6th', 'E2', 82.41); };
+        if (selectedBtnId === 'str-6th' || selectedManualName === 'D2') {
+          selectedManualName = "E2";
+          selectedManualFreq = 82.41;
+        }
       }
-    });
+      deselectAllButtons();
+    }
 
-    async function startTuner() {
+    // Cambiar Submodo (Auto/Manual)
+    function setSubmode(mode) {
+      currentSubmode = mode;
+      document.getElementById('subAuto').classList.toggle('active', mode === 'auto');
+      document.getElementById('subManual').classList.toggle('active', mode === 'manual');
+      if (mode === 'auto') deselectAllButtons();
+      else highlightButton(selectedBtnId);
+    }
+
+    // Seleccionar Cuerda
+    function selectString(btnId, name, freq) {
+      selectedBtnId = btnId;
+      selectedManualName = name;
+      selectedManualFreq = freq;
+      highlightButton(btnId);
+      playTone(freq);
+      if (currentSubmode === 'auto') setSubmode('manual');
+    }
+
+    // Tocar Tecla de Piano en Modo Cromático
+    function playPianoKey(name, freq) {
+      const keyId = `pKey-${name}`;
+      selectedBtnId = keyId;
+      selectedManualName = name;
+      selectedManualFreq = freq;
+      highlightButton(keyId);
+      playPianoTone(freq);
+    }
+
+    function highlightButton(id) {
+      deselectAllButtons();
+      const el = document.getElementById(id);
+      if (el) el.classList.add('selected');
+    }
+
+    function deselectAllButtons() {
+      document.querySelectorAll('.string-btn, .white-key, .black-key').forEach(b => b.classList.remove('selected'));
+    }
+
+    // Sintetizador Tono de Cuerda
+    function playTone(freq) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.exponentialRampToValueAtTime(0.4, now + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 1.4);
+      } catch (e) {}
+    }
+
+    // Sintetizador Tono de Piano (Multiharmónico)
+    function playPianoTone(freq) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+        const duration = 1.6;
+
+        const masterGain = ctx.createGain();
+        masterGain.gain.setValueAtTime(0.5, now);
+        masterGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        masterGain.connect(ctx.destination);
+
+        const osc1 = ctx.createOscillator();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(freq, now);
+        osc1.connect(masterGain);
+
+        const osc2 = ctx.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(freq * 2, now);
+        const gain2 = ctx.createGain();
+        gain2.gain.setValueAtTime(0.25, now);
+        osc2.connect(gain2);
+        gain2.connect(masterGain);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + duration);
+        osc2.stop(now + duration);
+      } catch (e) {}
+    }
+
+    // Obtener Micrófono
+    async function getMicrophoneStream() {
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+      } catch (e) {
+        return await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
+    }
+
+    async function toggleMic() {
+      if (isListening) stopMic();
+      else await startMic();
+    }
+
+    async function startMic() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+        micStream = await getMicrophoneStream();
+        const source = audioCtx.createMediaStreamSource(micStream);
+        
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
-        
-        mediaStreamSource = audioCtx.createMediaStreamSource(stream);
-        mediaStreamSource.connect(analyser);
+        source.connect(analyser);
 
         isListening = true;
-        startBtn.textContent = "Detener";
-        startBtn.style.backgroundColor = "#ef4444";
+        document.getElementById('micBtn').textContent = "Detener Micrófono";
+        document.getElementById('micBtn').style.background = "linear-gradient(135deg, #ff5252, #ff1744)";
+        document.getElementById('centsText').textContent = "Escuchando...";
+
         updatePitch();
       } catch (err) {
-        alert("Error al acceder al micrófono. Por favor permite los permisos.");
-        console.error(err);
+        document.getElementById('centsText').textContent = "Permiso de micrófono denegado";
+        document.getElementById('centsText').style.color = "var(--accent-red)";
       }
     }
 
-    function stopTuner() {
-      if (mediaStreamSource && mediaStreamSource.mediaStream) {
-        mediaStreamSource.mediaStream.getTracks().forEach(track => track.stop());
-      }
+    function stopMic() {
+      if (micStream) micStream.getTracks().forEach(track => track.stop());
       if (audioCtx) audioCtx.close();
+      audioCtx = null;
       isListening = false;
-      startBtn.textContent = "Iniciar Micrófono";
-      startBtn.style.backgroundColor = "var(--accent-blue)";
-      resetUI();
+      document.getElementById('micBtn').textContent = "Iniciar Micrófono";
+      document.getElementById('micBtn').style.background = "linear-gradient(135deg, var(--accent-green), var(--accent-blue))";
+      document.getElementById('centsText').textContent = "Micrófono detenido";
+      document.getElementById('centsText').style.color = "var(--text-muted)";
+      resetDisplay();
     }
 
-    function autoCorrelate(buf, sampleRate) {
-      let SIZE = buf.length;
-      let rms = 0;
+    function resetDisplay() {
+      document.getElementById('needle').style.transform = "translateX(-50%) rotate(0deg)";
+      document.getElementById('needle').classList.remove('in-tune');
+      document.getElementById('noteName').classList.remove('in-tune');
+      document.getElementById('noteName').textContent = "--";
+      document.getElementById('frequencyText').textContent = "0.0 Hz";
+    }
 
-      for (let i = 0; i < SIZE; i++) {
-        let val = buf[i];
-        rms += val * val;
-      }
+    // Autocorrelación
+    function autoCorrelate(buf, sampleRate) {
+      let SIZE = buf.length, rms = 0;
+      for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
       rms = Math.sqrt(rms / SIZE);
-      if (rms < 0.01) return -1; // Señal muy débil / silencio
+      if (rms < 0.015) return -1;
 
       let r1 = 0, r2 = SIZE - 1, thres = 0.2;
-      for (let i = 0; i < SIZE / 2; i++) {
-        if (Math.abs(buf[i]) < thres) { r1 = i; break; }
-      }
-      for (let i = 1; i < SIZE / 2; i++) {
-        if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
-      }
+      for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
+      for (let i = 1; i < SIZE / 2; i++) { if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; } }
 
       buf = buf.slice(r1, r2);
       SIZE = buf.length;
 
-      let c = new Array(SIZE).fill(0);
+      let c = new Float32Array(SIZE);
       for (let i = 0; i < SIZE; i++) {
-        for (let j = 0; j < SIZE - i; j++) {
-          c[i] = c[i] + buf[j] * buf[j + i];
-        }
+        for (let j = 0; j < SIZE - i; j++) c[i] += buf[j] * buf[j + i];
       }
 
       let d = 0;
       while (c[d] > c[d + 1]) d++;
       let maxval = -1, maxpos = -1;
-      for (let i = d; i < SIZE; i++) {
-        if (c[i] > maxval) {
-          maxval = c[i];
-          maxpos = i;
-        }
-      }
-      let T0 = maxpos;
 
-      // Interpolación parabólica para precisión
+      for (let i = d; i < SIZE; i++) {
+        if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+      }
+
+      let T0 = maxpos;
       let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
-      let a = (x1 + x3 - 2 * x2) / 2;
-      let b = (x3 - x1) / 2;
+      let a = (x1 + x3 - 2 * x2) / 2, b = (x3 - x1) / 2;
       if (a) T0 = T0 - b / (2 * a);
 
       return sampleRate / T0;
     }
 
-    function noteFromPitch(frequency) {
-      let noteNum = 12 * (Math.log(frequency / 440) / Math.log(2));
-      return Math.round(noteNum) + 69;
+    function getNoteFromFrequency(freq) {
+      const noteNum = 12 * (Math.log2(freq / 440)) + 69;
+      const nearestNote = Math.round(noteNum);
+      const noteName = noteNames12[(nearestNote % 12 + 12) % 12];
+      const octave = Math.floor(nearestNote / 12) - 1;
+      const targetFreq = 440 * Math.pow(2, (nearestNote - 69) / 12);
+      const cents = 1200 * Math.log2(freq / targetFreq);
+      return { name: `${noteName}${octave}`, targetFreq, cents };
     }
 
-    function frequencyFromNoteNumber(note) {
-      return 440 * Math.pow(2, (note - 69) / 12);
-    }
-
-    function centsFromPitchAndNote(frequency, note) {
-      return Math.floor(1200 * Math.log(frequency / frequencyFromNoteNumber(note)) / Math.log(2));
-    }
-
+    // Bucle de Detección
     function updatePitch() {
       if (!isListening) return;
 
+      const buf = new Float32Array(2048);
       analyser.getFloatTimeDomainData(buf);
-      let pitch = autoCorrelate(buf, audioCtx.sampleRate);
+      const pitch = autoCorrelate(buf, audioCtx.sampleRate);
 
-      if (pitch === -1) {
-        noteDisplay.textContent = "--";
-        detuneInfo.textContent = "Escuchando...";
-        freqDisplay.textContent = "0.0 Hz";
-        needle.style.transform = "rotate(0deg)";
-        needle.style.backgroundColor = "#cbd5e1";
-      } else {
-        let note = noteFromPitch(pitch);
-        let noteName = NOTE_STRINGS[note % 12];
-        let cents = centsFromPitchAndNote(pitch, note);
+      if (pitch !== -1 && pitch > 50 && pitch < 1000) {
+        smoothFreq = smoothFreq === 0 ? pitch : smoothFreq * 0.7 + pitch * 0.3;
+        
+        let detectedNote, cents, targetFrequency;
 
-        noteDisplay.textContent = noteName;
-        freqDisplay.textContent = pitch.toFixed(1) + " Hz";
-
-        // Ajuste de aguja (-50 cents a +50 cents -> -45deg a +45deg)
-        let rotation = Math.max(-45, Math.min(45, cents * 0.9));
-        needle.style.transform = `rotate(${rotation}deg)`;
-
-        if (Math.abs(cents) < 5) {
-          detuneInfo.textContent = "¡AFINADO!";
-          detuneInfo.style.color = "var(--accent-green)";
-          needle.style.backgroundColor = "var(--accent-green)";
-        } else if (cents < 0) {
-          detuneInfo.textContent = `Bajo (${cents} cents)`;
-          detuneInfo.style.color = "var(--accent-red)";
-          needle.style.backgroundColor = "var(--accent-red)";
+        if (activeInstrument === 'chromatic') {
+          const chromData = getNoteFromFrequency(smoothFreq);
+          detectedNote = chromData.name;
+          cents = chromData.cents;
+          targetFrequency = chromData.targetFreq;
+          const baseNote = detectedNote.replace(/\d/g, "");
+          highlightButton(`pKey-${baseNote}4`);
+        } else if (activeInstrument === 'charango') {
+          if (currentSubmode === 'auto') {
+            const closest = charangoStrings.reduce((prev, curr) => 
+              Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
+            );
+            detectedNote = closest.name;
+            targetFrequency = closest.freq;
+            cents = 1200 * Math.log2(smoothFreq / closest.freq);
+            highlightButton(closest.id);
+          } else {
+            detectedNote = selectedManualName;
+            targetFrequency = selectedManualFreq;
+            cents = 1200 * Math.log2(smoothFreq / selectedManualFreq);
+          }
         } else {
-          detuneInfo.textContent = `Alto (+${cents} cents)`;
-          detuneInfo.style.color = "var(--accent-red)";
-          needle.style.backgroundColor = "var(--accent-red)";
+          // Guitarra
+          const currentGuitarArray = guitarTuningMode === 'dropD' ? guitarDropD : guitarStandard;
+          if (currentSubmode === 'auto') {
+            const closest = currentGuitarArray.reduce((prev, curr) => 
+              Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
+            );
+            detectedNote = closest.name;
+            targetFrequency = closest.freq;
+            cents = 1200 * Math.log2(smoothFreq / closest.freq);
+            highlightButton(closest.id);
+          } else {
+            detectedNote = selectedManualName;
+            targetFrequency = selectedManualFreq;
+            cents = 1200 * Math.log2(smoothFreq / selectedManualFreq);
+          }
+        }
+
+        // Animación de Aguja
+        const rotationAngle = Math.max(-50, Math.min(50, cents));
+        const needleEl = document.getElementById('needle');
+        const noteNameEl = document.getElementById('noteName');
+        const centsTextEl = document.getElementById('centsText');
+
+        needleEl.style.transform = `translateX(-50%) rotate(${rotationAngle}deg)`;
+        document.getElementById('frequencyText').textContent = `${smoothFreq.toFixed(1)} Hz`;
+        noteNameEl.textContent = detectedNote;
+
+        if (Math.abs(cents) <= 3) {
+          needleEl.classList.add('in-tune');
+          noteNameEl.classList.add('in-tune');
+          centsTextEl.textContent = "¡AFINADO!";
+          centsTextEl.style.color = "var(--accent-green)";
+        } else {
+          needleEl.classList.remove('in-tune');
+          noteNameEl.classList.remove('in-tune');
+          if (cents < 0) {
+            centsTextEl.textContent = `Bajo (-${Math.abs(Math.round(cents))} cents)`;
+            centsTextEl.style.color = "var(--accent-orange)";
+          } else {
+            centsTextEl.textContent = `Alto (+${Math.round(cents)} cents)`;
+            centsTextEl.style.color = "var(--accent-red)";
+          }
         }
       }
 
       requestAnimationFrame(updatePitch);
-    }
-
-    function resetUI() {
-      noteDisplay.textContent = "--";
-      detuneInfo.textContent = "Presiona Iniciar";
-      detuneInfo.style.color = "#94a3b8";
-      freqDisplay.textContent = "0.0 Hz";
-      needle.style.transform = "rotate(0deg)";
-      needle.style.backgroundColor = "#cbd5e1";
     }
   </script>
 </body>
