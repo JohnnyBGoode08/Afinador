@@ -461,7 +461,6 @@
     let selectedManualName = "E2";
     let selectedManualFreq = 82.41;
 
-    // Singleton global de AudioContext para reutilización persistente
     let sharedAudioCtx = null;
     let analyser = null;
     let micStream = null;
@@ -563,7 +562,7 @@
       document.querySelectorAll('.string-btn, .white-key, .black-key').forEach(b => b.classList.remove('selected'));
     }
 
-    // Sintetizador Tono de Cuerda (reutiliza sharedAudioCtx)
+    // Sintetizador Tono de Cuerda
     function playTone(freq) {
       try {
         const ctx = getAudioContext();
@@ -588,7 +587,7 @@
       }
     }
 
-    // Sintetizador Tono de Piano (reutiliza sharedAudioCtx)
+    // Sintetizador Tono de Piano
     function playPianoTone(freq) {
       try {
         const ctx = getAudioContext();
@@ -624,12 +623,20 @@
 
     // Obtener Micrófono
     async function getMicrophoneStream() {
-      try {
-        return await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+          });
+        } catch (e) {
+          return await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+      } else {
+        const getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        if (!getUserMedia) throw new Error("getUserMedia no disponible");
+        return new Promise((resolve, reject) => {
+          getUserMedia.call(navigator, { audio: true }, resolve, reject);
         });
-      } catch (e) {
-        return await navigator.mediaDevices.getUserMedia({ audio: true });
       }
     }
 
@@ -656,6 +663,8 @@
 
         updatePitch();
       } catch (err) {
+        console.error("Error al iniciar micrófono:", err);
+        alert("Atención: No se pudo acceder al micrófono. Verifica que tu teléfono tenga habilitado el permiso de micrófono para esta aplicación en Ajustes -> Aplicaciones -> Permisos.");
         document.getElementById('centsText').textContent = "Permiso de micrófono denegado";
         document.getElementById('centsText').style.color = "var(--accent-red)";
       }
