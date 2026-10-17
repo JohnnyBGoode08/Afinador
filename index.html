@@ -461,11 +461,24 @@
     let selectedManualName = "E2";
     let selectedManualFreq = 82.41;
 
-    let audioCtx = null;
+    // Singleton global de AudioContext para reutilización persistente
+    let sharedAudioCtx = null;
     let analyser = null;
     let micStream = null;
+    let micSourceNode = null;
     let isListening = false;
     let smoothFreq = 0;
+
+    function getAudioContext() {
+      if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+        sharedAudioCtx = new AudioCtxClass();
+      }
+      if (sharedAudioCtx.state === 'suspended') {
+        sharedAudioCtx.resume();
+      }
+      return sharedAudioCtx;
+    }
 
     // Cambiar Instrumento
     function switchInstrument(inst) {
@@ -550,10 +563,10 @@
       document.querySelectorAll('.string-btn, .white-key, .black-key').forEach(b => b.classList.remove('selected'));
     }
 
-    // Sintetizador Tono de Cuerda
+    // Sintetizador Tono de Cuerda (reutiliza sharedAudioCtx)
     function playTone(freq) {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = getAudioContext();
         const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -570,13 +583,15 @@
 
         osc.start(now);
         osc.stop(now + 1.4);
-      } catch (e) {}
+      } catch (e) {
+        console.error(e);
+      }
     }
 
-    // Sintetizador Tono de Piano (Multiharmónico)
+    // Sintetizador Tono de Piano (reutiliza sharedAudioCtx)
     function playPianoTone(freq) {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = getAudioContext();
         const now = ctx.currentTime;
         const duration = 1.6;
 
@@ -602,7 +617,9 @@
         osc2.start(now);
         osc1.stop(now + duration);
         osc2.stop(now + duration);
-      } catch (e) {}
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     // Obtener Micrófono
@@ -623,15 +640,14 @@
 
     async function startMic() {
       try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
+        const ctx = getAudioContext();
 
         micStream = await getMicrophoneStream();
-        const source = audioCtx.createMediaStreamSource(micStream);
+        micSourceNode = ctx.createMediaStreamSource(micStream);
         
-        analyser = audioCtx.createAnalyser();
+        analyser = ctx.createAnalyser();
         analyser.fftSize = 2048;
-        source.connect(analyser);
+        micSourceNode.connect(analyser);
 
         isListening = true;
         document.getElementById('micBtn').textContent = "Detener Micrófono";
@@ -646,9 +662,14 @@
     }
 
     function stopMic() {
-      if (micStream) micStream.getTracks().forEach(track => track.stop());
-      if (audioCtx) audioCtx.close();
-      audioCtx = null;
+      if (micStream) {
+        micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
+      }
+      if (micSourceNode) {
+        micSourceNode.disconnect();
+        micSourceNode = null;
+      }
       isListening = false;
       document.getElementById('micBtn').textContent = "Iniciar Micrófono";
       document.getElementById('micBtn').style.background = "linear-gradient(135deg, var(--accent-green), var(--accent-blue))";
@@ -712,11 +733,12 @@
 
     // Bucle de Detección
     function updatePitch() {
-      if (!isListening) return;
+      if (!isListening || !analyser) return;
 
       const buf = new Float32Array(2048);
       analyser.getFloatTimeDomainData(buf);
-      const pitch = autoCorrelate(buf, audioCtx.sampleRate);
+      const sampleRate = sharedAudioCtx ? sharedAudioCtx.sampleRate : 44100;
+      const pitch = autoCorrelate(buf, sampleRate);
 
       if (pitch !== -1 && pitch > 50 && pitch < 1000) {
         smoothFreq = smoothFreq === 0 ? pitch : smoothFreq * 0.7 + pitch * 0.3;
