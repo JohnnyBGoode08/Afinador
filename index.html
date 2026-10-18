@@ -352,8 +352,9 @@
       font-weight: 700;
       font-size: 0.82rem;
       padding: 8px 16px;
+      border: none;
       border-radius: 20px;
-      text-decoration: none;
+      cursor: pointer;
       box-shadow: 0 3px 12px rgba(255, 94, 91, 0.3);
       transition: transform 0.2s, box-shadow 0.2s;
     }
@@ -462,15 +463,15 @@
     </div>
   </div>
 
-  <!-- Sección de Donación / Apoyo (Ko-fi con target="_blank") -->
+  <!-- Sección de Donación / Apoyo (Ko-fi vía WebViewString) -->
   <div class="support-box">
     <div class="support-text">
       🚫 <b>100% Gratis y sin anuncios</b><br>
       Si te sirve el afinador, ¡apoya el proyecto invitándome un café!
     </div>
-    <a href="https://ko-fi.com/johnnybgoodeband" target="_blank" class="kofi-btn">
+    <button type="button" class="kofi-btn" onclick="abrirKofi()">
       ☕ Invítame un café en Ko-fi
-    </a>
+    </button>
   </div>
 
   <!-- Botón Encender / Apagar -->
@@ -479,6 +480,15 @@
   </div>
 
   <script>
+    // Función de apertura de Ko-fi usando WebViewString para Kodular
+    function abrirKofi() {
+      if (typeof AppInventor !== 'undefined' && AppInventor.setWebViewString) {
+        AppInventor.setWebViewString("OPEN_KOFI");
+      } else {
+        window["open"]("https://ko-fi.com/johnnybgoodeband", "_blank");
+      }
+    }
+
     // Arrays de Instrumentos
     const guitarStandard = [
       { id: "str-6th", name: "E2", freq: 82.41 },
