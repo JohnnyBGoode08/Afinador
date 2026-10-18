@@ -12,6 +12,7 @@
       --accent-red: #ff5252;
       --accent-orange: #ffab40;
       --accent-blue: #00b0ff;
+      --accent-kofi: #ff5e5b;
       --text-main: #ffffff;
       --text-muted: #8e99a8;
       --border-color: #2a3140;
@@ -108,7 +109,7 @@
     .gauge-container {
       position: relative;
       width: 260px;
-      height: 135px;
+      height: 130px;
       margin: 2px auto;
       display: flex;
       flex-direction: column;
@@ -248,7 +249,7 @@
       position: relative;
       width: 100%;
       max-width: 330px;
-      height: 120px;
+      height: 115px;
       margin: 6px auto;
       background-color: #0d0f14;
       border-radius: 12px;
@@ -316,6 +317,49 @@
       color: #000 !important;
       box-shadow: 0 0 10px var(--accent-green);
       transform: translateY(2px);
+    }
+
+    /* Sección Apoyo / Donación Ko-fi */
+    .support-box {
+      width: 100%;
+      max-width: 330px;
+      margin: 8px auto 4px;
+      text-align: center;
+      background-color: var(--card-bg);
+      border: 1px dashed var(--border-color);
+      padding: 10px;
+      border-radius: 16px;
+    }
+
+    .support-text {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+
+    .support-text b {
+      color: var(--accent-green);
+    }
+
+    .kofi-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background-color: var(--accent-kofi);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.82rem;
+      padding: 8px 16px;
+      border-radius: 20px;
+      text-decoration: none;
+      box-shadow: 0 3px 12px rgba(255, 94, 91, 0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .kofi-btn:active {
+      transform: scale(0.97);
     }
 
     /* Botón Principal */
@@ -418,6 +462,17 @@
     </div>
   </div>
 
+  <!-- Sección de Donación / Apoyo (Ko-fi) -->
+  <div class="support-box">
+    <div class="support-text">
+      🚫 <b>100% Gratis y sin anuncios</b><br>
+      Si te sirve el afinador, ¡apoya el proyecto invitándome un café!
+    </div>
+    <a href="https://ko-fi.com/johnnybgoodeband" target="_blank" class="kofi-btn">
+      ☕ Invítame un café en Ko-fi
+    </a>
+  </div>
+
   <!-- Botón Encender / Apagar -->
   <div class="controls">
     <button class="btn-main" id="micBtn" onclick="toggleMic()">Iniciar Micrófono</button>
@@ -453,9 +508,9 @@
 
     const noteNames12 = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-    let activeInstrument = 'guitar'; // 'guitar', 'charango', 'chromatic'
-    let currentSubmode = 'auto'; // 'auto' o 'manual'
-    let guitarTuningMode = 'standard'; // 'standard' o 'dropD'
+    let activeInstrument = 'guitar';
+    let currentSubmode = 'auto';
+    let guitarTuningMode = 'standard';
     
     let selectedBtnId = "str-6th";
     let selectedManualName = "E2";
@@ -486,17 +541,17 @@
       document.getElementById('tabCharango').classList.toggle('active', inst === 'charango');
       document.getElementById('tabChromatic').classList.toggle('active', inst === 'chromatic');
 
-      document.getElementById('guitarHeadstock').style.display = (inst === 'guitar') ? 'grid' : 'none';
-      document.getElementById('charangoHeadstock').style.display = (inst === 'charango') ? 'grid' : 'none';
-      document.getElementById('pianoContainer').style.display = (inst === 'chromatic') ? 'block' : 'none';
+      document.getElementById('guitarHeadstock')["style"]["display"] = (inst === 'guitar') ? 'grid' : 'none';
+      document.getElementById('charangoHeadstock')["style"]["display"] = (inst === 'charango') ? 'grid' : 'none';
+      document.getElementById('pianoContainer')["style"]["display"] = (inst === 'chromatic') ? 'block' : 'none';
       
-      document.getElementById('tuningToggle').style.display = (inst === 'guitar') ? 'flex' : 'none';
+      document.getElementById('tuningToggle')["style"]["display"] = (inst === 'guitar') ? 'flex' : 'none';
 
       deselectAllButtons();
       resetDisplay();
     }
 
-    // Cambiar Afinación Guitarra (Standard vs Drop D)
+    // Cambiar Afinación Guitarra
     function setGuitarTuning(type) {
       guitarTuningMode = type;
       document.getElementById('tuneStandard').classList.toggle('active', type === 'standard');
@@ -523,7 +578,7 @@
       deselectAllButtons();
     }
 
-    // Cambiar Submodo (Auto/Manual)
+    // Cambiar Submodo
     function setSubmode(mode) {
       currentSubmode = mode;
       document.getElementById('subAuto').classList.toggle('active', mode === 'auto');
@@ -533,28 +588,28 @@
     }
 
     // Seleccionar Cuerda
-    function selectString(btnId, name, freq) {
+    function selectString(btnId, nameVal, freq) {
       selectedBtnId = btnId;
-      selectedManualName = name;
+      selectedManualName = nameVal;
       selectedManualFreq = freq;
       highlightButton(btnId);
       playTone(freq);
       if (currentSubmode === 'auto') setSubmode('manual');
     }
 
-    // Tocar Tecla de Piano en Modo Cromático
-    function playPianoKey(name, freq) {
-      const keyId = `pKey-${name}`;
+    // Tocar Tecla de Piano
+    function playPianoKey(nameVal, freq) {
+      const keyId = `pKey-${nameVal}`;
       selectedBtnId = keyId;
-      selectedManualName = name;
+      selectedManualName = nameVal;
       selectedManualFreq = freq;
       highlightButton(keyId);
       playPianoTone(freq);
     }
 
-    function highlightButton(id) {
+    function highlightButton(idVal) {
       deselectAllButtons();
-      const el = document.getElementById(id);
+      const el = document.getElementById(idVal);
       if (el) el.classList.add('selected');
     }
 
@@ -632,10 +687,10 @@
           return await navigator.mediaDevices.getUserMedia({ audio: true });
         }
       } else {
-        const getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-        if (!getUserMedia) throw new Error("getUserMedia no disponible");
+        const getUserMediaFunc = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+        if (!getUserMediaFunc) throw new Error("getUserMedia no disponible");
         return new Promise((resolve, reject) => {
-          getUserMedia.call(navigator, { audio: true }, resolve, reject);
+          getUserMediaFunc["call"](navigator, { audio: true }, resolve, reject);
         });
       }
     }
@@ -658,15 +713,15 @@
 
         isListening = true;
         document.getElementById('micBtn').textContent = "Detener Micrófono";
-        document.getElementById('micBtn').style.background = "linear-gradient(135deg, #ff5252, #ff1744)";
+        document.getElementById('micBtn')["style"]["background"] = "linear-gradient(135deg, #ff5252, #ff1744)";
         document.getElementById('centsText').textContent = "Escuchando...";
 
         updatePitch();
       } catch (err) {
         console.error("Error al iniciar micrófono:", err);
-        alert("Atención: No se pudo acceder al micrófono. Verifica que tu teléfono tenga habilitado el permiso de micrófono para esta aplicación en Ajustes -> Aplicaciones -> Permisos.");
+        alert("Atención: No se pudo acceder al micrófono. Verifica los permisos en Ajustes -> Aplicaciones.");
         document.getElementById('centsText').textContent = "Permiso de micrófono denegado";
-        document.getElementById('centsText').style.color = "var(--accent-red)";
+        document.getElementById('centsText')["style"]["color"] = "var(--accent-red)";
       }
     }
 
@@ -681,14 +736,14 @@
       }
       isListening = false;
       document.getElementById('micBtn').textContent = "Iniciar Micrófono";
-      document.getElementById('micBtn').style.background = "linear-gradient(135deg, var(--accent-green), var(--accent-blue))";
+      document.getElementById('micBtn')["style"]["background"] = "linear-gradient(135deg, var(--accent-green), var(--accent-blue))";
       document.getElementById('centsText').textContent = "Micrófono detenido";
-      document.getElementById('centsText').style.color = "var(--text-muted)";
+      document.getElementById('centsText')["style"]["color"] = "var(--text-muted)";
       resetDisplay();
     }
 
     function resetDisplay() {
-      document.getElementById('needle').style.transform = "translateX(-50%) rotate(0deg)";
+      document.getElementById('needle')["style"]["transform"] = "translateX(-50%) rotate(0deg)";
       document.getElementById('needle').classList.remove('in-tune');
       document.getElementById('noteName').classList.remove('in-tune');
       document.getElementById('noteName').textContent = "--";
@@ -733,11 +788,11 @@
     function getNoteFromFrequency(freq) {
       const noteNum = 12 * (Math.log2(freq / 440)) + 69;
       const nearestNote = Math.round(noteNum);
-      const noteName = noteNames12[(nearestNote % 12 + 12) % 12];
+      const noteNameVal = noteNames12[(nearestNote % 12 + 12) % 12];
       const octave = Math.floor(nearestNote / 12) - 1;
       const targetFreq = 440 * Math.pow(2, (nearestNote - 69) / 12);
       const cents = 1200 * Math.log2(freq / targetFreq);
-      return { name: `${noteName}${octave}`, targetFreq, cents };
+      return { noteNameStr: `${noteNameVal}${octave}`, targetFreq, cents };
     }
 
     // Bucle de Detección
@@ -756,7 +811,7 @@
 
         if (activeInstrument === 'chromatic') {
           const chromData = getNoteFromFrequency(smoothFreq);
-          detectedNote = chromData.name;
+          detectedNote = chromData.noteNameStr;
           cents = chromData.cents;
           targetFrequency = chromData.targetFreq;
           const baseNote = detectedNote.replace(/\d/g, "");
@@ -766,10 +821,10 @@
             const closest = charangoStrings.reduce((prev, curr) => 
               Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
             );
-            detectedNote = closest.name;
+            detectedNote = closest["name"];
             targetFrequency = closest.freq;
             cents = 1200 * Math.log2(smoothFreq / closest.freq);
-            highlightButton(closest.id);
+            highlightButton(closest["id"]);
           } else {
             detectedNote = selectedManualName;
             targetFrequency = selectedManualFreq;
@@ -782,10 +837,10 @@
             const closest = currentGuitarArray.reduce((prev, curr) => 
               Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
             );
-            detectedNote = closest.name;
+            detectedNote = closest["name"];
             targetFrequency = closest.freq;
             cents = 1200 * Math.log2(smoothFreq / closest.freq);
-            highlightButton(closest.id);
+            highlightButton(closest["id"]);
           } else {
             detectedNote = selectedManualName;
             targetFrequency = selectedManualFreq;
@@ -799,7 +854,7 @@
         const noteNameEl = document.getElementById('noteName');
         const centsTextEl = document.getElementById('centsText');
 
-        needleEl.style.transform = `translateX(-50%) rotate(${rotationAngle}deg)`;
+        needleEl["style"]["transform"] = `translateX(-50%) rotate(${rotationAngle}deg)`;
         document.getElementById('frequencyText').textContent = `${smoothFreq.toFixed(1)} Hz`;
         noteNameEl.textContent = detectedNote;
 
@@ -807,16 +862,16 @@
           needleEl.classList.add('in-tune');
           noteNameEl.classList.add('in-tune');
           centsTextEl.textContent = "¡AFINADO!";
-          centsTextEl.style.color = "var(--accent-green)";
+          centsTextEl["style"]["color"] = "var(--accent-green)";
         } else {
           needleEl.classList.remove('in-tune');
           noteNameEl.classList.remove('in-tune');
           if (cents < 0) {
             centsTextEl.textContent = `Bajo (-${Math.abs(Math.round(cents))} cents)`;
-            centsTextEl.style.color = "var(--accent-orange)";
+            centsTextEl["style"]["color"] = "var(--accent-orange)";
           } else {
             centsTextEl.textContent = `Alto (+${Math.round(cents)} cents)`;
-            centsTextEl.style.color = "var(--accent-red)";
+            centsTextEl["style"]["color"] = "var(--accent-red)";
           }
         }
       }
