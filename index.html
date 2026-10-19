@@ -36,6 +36,7 @@
       min-height: 100vh;
       padding: 12px 10px;
       overflow-x: hidden;
+      position: relative;
     }
 
     /* Selector de Instrumento Superior */
@@ -337,27 +338,82 @@
       transform: translateY(2px);
     }
 
-    /* Sección Apoyo / Donación Ko-fi */
-    .support-box {
-      width: 100%;
-      max-width: 330px;
-      margin: 8px auto 4px;
-      text-align: center;
+    /* Botón Flotante Discreto (Tacita en Lado Derecho Centro) */
+    .floating-kofi-btn {
+      position: fixed;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
       background-color: var(--card-bg);
-      border: 1px dashed var(--border-color);
-      padding: 10px;
-      border-radius: 16px;
+      border: 2px solid var(--accent-kofi);
+      color: #ffffff;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      z-index: 99;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
 
-    .support-text {
-      font-size: 0.74rem;
+    .floating-kofi-btn:active {
+      transform: translateY(-50%) scale(0.92);
+    }
+
+    /* Ventana Modal / Pop-up Chiquito para Apoyo */
+    .kofi-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .kofi-modal-overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .kofi-modal-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 20px 18px;
+      width: 88%;
+      max-width: 300px;
+      text-align: center;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      transform: scale(0.9);
+      transition: transform 0.2s ease;
+    }
+
+    .kofi-modal-overlay.active .kofi-modal-card {
+      transform: scale(1);
+    }
+
+    .close-modal-btn {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      background: none;
+      border: none;
       color: var(--text-muted);
-      line-height: 1.3;
-      margin-bottom: 8px;
-    }
-
-    .support-text b {
-      color: var(--accent-green);
+      font-size: 1.2rem;
+      cursor: pointer;
+      line-height: 1;
     }
 
     .kofi-btn {
@@ -368,13 +424,15 @@
       background-color: var(--accent-kofi);
       color: #ffffff;
       font-weight: 700;
-      font-size: 0.82rem;
-      padding: 8px 16px;
+      font-size: 0.85rem;
+      padding: 10px 18px;
       border: none;
       border-radius: 20px;
       cursor: pointer;
       box-shadow: 0 3px 12px rgba(255, 94, 91, 0.3);
       transition: transform 0.2s, box-shadow 0.2s;
+      width: 100%;
+      margin-top: 4px;
     }
 
     .kofi-btn:active {
@@ -479,15 +537,24 @@
     </div>
   </div>
 
-  <!-- Sección Apoyo / Donación Ko-fi -->
-  <div class="support-box">
-    <div class="support-text">
-      🚫 <b>100% Gratis y sin anuncios</b><br>
-      Si te sirve el afinador, ¡apoya el proyecto invitándome un café!
+  <!-- Botón Flotante Discreto (Tacita en Lado Derecho Centro) -->
+  <button type="button" class="floating-kofi-btn" onclick="openKofiModal()" title="Invítame un café">
+    ☕
+  </button>
+
+  <!-- Ventana Modal / Pop-up Chiquito para Apoyo -->
+  <div class="kofi-modal-overlay" id="kofiModal" onclick="closeKofiModal(event)">
+    <div class="kofi-modal-card" onclick="event.stopPropagation()">
+      <button type="button" class="close-modal-btn" onclick="closeKofiModal()">✕</button>
+      <div style="font-size: 2.2rem; margin-bottom: 6px;">☕</div>
+      <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; color: var(--text-main);">¿Te sirve el afinador?</h3>
+      <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 14px;">
+        Esta app es 100% gratuita y sin anuncios. Si quieres apoyar el desarrollo, ¡puedes invitarme un café!
+      </p>
+      <button type="button" class="kofi-btn" onclick="confirmKofiOpen()">
+        ☕ Invítame un café en Ko-fi
+      </button>
     </div>
-    <button type="button" class="kofi-btn" onclick="abrirKofi()">
-      ☕ Invítame un café en Ko-fi
-    </button>
   </div>
 
   <!-- Botón Principal -->
@@ -496,6 +563,25 @@
   </div>
 
   <script>
+    // Control del Modal de Apoyo
+    function openKofiModal() {
+      const modal = document.getElementById('kofiModal');
+      modal.style.display = 'flex';
+      setTimeout(() => { modal.classList.add('active'); }, 10);
+    }
+
+    function closeKofiModal(e) {
+      if (e && e.target !== e.currentTarget && !e.target.classList.contains('close-modal-btn')) return;
+      const modal = document.getElementById('kofiModal');
+      modal.classList.remove('active');
+      setTimeout(() => { modal.style.display = 'none'; }, 200);
+    }
+
+    function confirmKofiOpen() {
+      closeKofiModal();
+      abrirKofi();
+    }
+
     function abrirKofi() {
       if (typeof AppInventor !== 'undefined' && AppInventor.setWebViewString) {
         AppInventor.setWebViewString("OPEN_KOFI");
@@ -551,7 +637,7 @@
     const PITCH_BUFFER_SIZE = 7;
     let pitchBuffer = [];
     
-    let attackThreshold = 0.038; // Umbral de disparo por golpe
+    let attackThreshold = 0.038;
     let isHoldingPitch = false;
     let holdTimeout = null;
     let smoothFreq = 0;
