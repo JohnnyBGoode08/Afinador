@@ -105,7 +105,7 @@
       color: var(--text-main);
     }
 
-    /* Medidor de Aguja */
+    /* Medidor de Aguja con Zona Verde */
     .gauge-container {
       position: relative;
       width: 260px;
@@ -129,7 +129,6 @@
       background: radial-gradient(circle at 50% 100%, rgba(255,255,255,0.03), transparent 70%);
     }
 
-    /* Zona Verde de Tolerancia (Diana de Puntería) */
     .target-zone {
       position: absolute;
       top: 0;
@@ -168,7 +167,7 @@
       background: linear-gradient(to top, var(--text-muted), var(--text-main));
       transform-origin: bottom center;
       transform: translateX(-50%) rotate(0deg);
-      transition: transform 0.08s ease-out;
+      transition: transform 0.12s ease-out;
       border-radius: 2px;
       z-index: 3;
     }
@@ -262,7 +261,7 @@
       color: var(--text-muted);
     }
 
-    /* Piano Realista (Modo Cromático) */
+    /* Piano Realista */
     .piano-container {
       display: none;
       position: relative;
@@ -421,14 +420,13 @@
       <button class="submode-btn active" id="subAuto" onclick="setSubmode('auto')">Auto</button>
       <button class="submode-btn" id="subManual" onclick="setSubmode('manual')">Manual</button>
     </div>
-    <!-- Selector de Afinación Guitarra -->
     <div class="submode-toggle" id="tuningToggle">
       <button class="submode-btn active" id="tuneStandard" onclick="setGuitarTuning('standard')">Estándar</button>
       <button class="submode-btn" id="tuneDropD" onclick="setGuitarTuning('dropD')">Drop D</button>
     </div>
   </div>
 
-  <!-- Medidor de Aguja con Zona de Tolerancia -->
+  <!-- Medidor de Aguja -->
   <div class="gauge-container">
     <div class="gauge-arc"></div>
     <div class="target-zone"></div>
@@ -498,7 +496,6 @@
   </div>
 
   <script>
-    // Comunicación con Kodular para abrir Ko-fi
     function abrirKofi() {
       if (typeof AppInventor !== 'undefined' && AppInventor.setWebViewString) {
         AppInventor.setWebViewString("OPEN_KOFI");
@@ -507,7 +504,6 @@
       }
     }
 
-    // Arrays de Instrumentos
     const guitarStandard = [
       { id: "str-6th", name: "E2", freq: 82.41 },
       { id: "str-5th", name: "A2", freq: 110.00 },
@@ -546,12 +542,21 @@
 
     let sharedAudioCtx = null;
     let analyser = null;
+    let lowpassFilter = null;
     let micStream = null;
     let micSourceNode = null;
     let isListening = false;
+
+    // Buffer circular para filtro de mediana
+    const PITCH_BUFFER_SIZE = 7;
+    let pitchBuffer = [];
+    
+    let attackThreshold = 0.038; // Umbral de disparo por golpe
+    let isHoldingPitch = false;
+    let holdTimeout = null;
     let smoothFreq = 0;
-    let smoothCents = 0; // Suavizado de aguja
-    let wasInTune = false; // Control para efecto de sonido "chi-chin"
+    let smoothCents = 0;
+    let wasInTune = false;
 
     function getAudioContext() {
       if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
@@ -564,17 +569,15 @@
       return sharedAudioCtx;
     }
 
-    // Efecto de Sonido "Chi-Chin" al afinar
     function playInTuneSound() {
       try {
         const ctx = getAudioContext();
         const now = ctx.currentTime;
 
-        // Primer tono cristalino ("Chi")
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(1046.5, now); // C6
+        osc1.frequency.setValueAtTime(1046.5, now);
         gain1.gain.setValueAtTime(0.12, now);
         gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
         osc1.connect(gain1);
@@ -582,11 +585,10 @@
         osc1.start(now);
         osc1.stop(now + 0.18);
 
-        // Segundo tono agudo de confirmación ("Chin")
         const osc2 = ctx.createOscillator();
         const gain2 = ctx.createGain();
         osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(1567.98, now + 0.07); // G6
+        osc2.frequency.setValueAtTime(1567.98, now + 0.07);
         gain2.gain.setValueAtTime(0.18, now + 0.07);
         gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
         osc2.connect(gain2);
@@ -598,7 +600,6 @@
       }
     }
 
-    // Cambiar Instrumento
     function switchInstrument(inst) {
       activeInstrument = inst;
       document.getElementById('tabGuitar').classList.toggle('active', inst === 'guitar');
@@ -608,14 +609,12 @@
       document.getElementById('guitarHeadstock')["style"]["display"] = (inst === 'guitar') ? 'grid' : 'none';
       document.getElementById('charangoHeadstock')["style"]["display"] = (inst === 'charango') ? 'grid' : 'none';
       document.getElementById('pianoContainer')["style"]["display"] = (inst === 'chromatic') ? 'block' : 'none';
-      
       document.getElementById('tuningToggle')["style"]["display"] = (inst === 'guitar') ? 'flex' : 'none';
 
       deselectAllButtons();
       resetDisplay();
     }
 
-    // Cambiar Afinación Guitarra
     function setGuitarTuning(type) {
       guitarTuningMode = type;
       document.getElementById('tuneStandard').classList.toggle('active', type === 'standard');
@@ -642,7 +641,6 @@
       deselectAllButtons();
     }
 
-    // Cambiar Submodo
     function setSubmode(mode) {
       currentSubmode = mode;
       document.getElementById('subAuto').classList.toggle('active', mode === 'auto');
@@ -651,7 +649,6 @@
       else highlightButton(selectedBtnId);
     }
 
-    // Seleccionar Cuerda
     function selectString(btnId, nameVal, freq) {
       selectedBtnId = btnId;
       selectedManualName = nameVal;
@@ -662,7 +659,6 @@
       if (currentSubmode === 'auto') setSubmode('manual');
     }
 
-    // Tocar Tecla de Piano
     function playPianoKey(nameVal, freq) {
       const keyId = `pKey-${nameVal}`;
       selectedBtnId = keyId;
@@ -683,7 +679,6 @@
       document.querySelectorAll('.string-btn, .white-key, .black-key').forEach(b => b.classList.remove('selected'));
     }
 
-    // Sintetizador Tono de Cuerda
     function playTone(freq) {
       try {
         const ctx = getAudioContext();
@@ -708,7 +703,6 @@
       }
     }
 
-    // Sintetizador Tono de Piano
     function playPianoTone(freq) {
       try {
         const ctx = getAudioContext();
@@ -742,7 +736,6 @@
       }
     }
 
-    // Obtener Micrófono
     async function getMicrophoneStream() {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
@@ -773,12 +766,20 @@
         micStream = await getMicrophoneStream();
         micSourceNode = ctx.createMediaStreamSource(micStream);
         
+        lowpassFilter = ctx.createBiquadFilter();
+        lowpassFilter.type = "lowpass";
+        lowpassFilter.frequency.setValueAtTime(850, ctx.currentTime);
+
         analyser = ctx.createAnalyser();
         analyser.fftSize = 2048;
-        micSourceNode.connect(analyser);
+
+        micSourceNode.connect(lowpassFilter);
+        lowpassFilter.connect(analyser);
 
         isListening = true;
         wasInTune = false;
+        isHoldingPitch = false;
+        pitchBuffer = [];
         document.getElementById('micBtn').textContent = "Detener Micrófono";
         document.getElementById('micBtn')["style"]["background"] = "linear-gradient(135deg, #ff5252, #ff1744)";
         document.getElementById('centsText').textContent = "Escuchando...";
@@ -802,18 +803,20 @@
         micSourceNode = null;
       }
       isListening = false;
-      wasInTune = false;
+      resetDisplay();
       document.getElementById('micBtn').textContent = "Iniciar Micrófono";
       document.getElementById('micBtn')["style"]["background"] = "linear-gradient(135deg, var(--accent-green), var(--accent-blue))";
       document.getElementById('centsText').textContent = "Micrófono detenido";
       document.getElementById('centsText')["style"]["color"] = "var(--text-muted)";
-      resetDisplay();
     }
 
     function resetDisplay() {
       smoothFreq = 0;
       smoothCents = 0;
       wasInTune = false;
+      isHoldingPitch = false;
+      pitchBuffer = [];
+      if (holdTimeout) clearTimeout(holdTimeout);
       document.getElementById('needle')["style"]["transform"] = "translateX(-50%) rotate(0deg)";
       document.getElementById('needle').classList.remove('in-tune');
       document.getElementById('noteName').classList.remove('in-tune');
@@ -821,12 +824,18 @@
       document.getElementById('frequencyText').textContent = "0.0 Hz";
     }
 
-    // Autocorrelación
+    function getMedianValue(arr) {
+      if (arr.length === 0) return 0;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(sorted.length / 2);
+      return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+
     function autoCorrelate(buf, sampleRate) {
       let SIZE = buf.length, rms = 0;
       for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
       rms = Math.sqrt(rms / SIZE);
-      if (rms < 0.015) return -1;
+      if (rms < 0.012) return { pitch: -1, rms };
 
       let r1 = 0, r2 = SIZE - 1, thres = 0.2;
       for (let i = 0; i < SIZE / 2; i++) { if (Math.abs(buf[i]) < thres) { r1 = i; break; } }
@@ -853,7 +862,7 @@
       let a = (x1 + x3 - 2 * x2) / 2, b = (x3 - x1) / 2;
       if (a) T0 = T0 - b / (2 * a);
 
-      return sampleRate / T0;
+      return { pitch: sampleRate / T0, rms };
     }
 
     function getNoteFromFrequency(freq) {
@@ -866,100 +875,110 @@
       return { noteNameStr: `${noteNameVal}${octave}`, targetFreq, cents };
     }
 
-    // Bucle de Detección
+    function processPitchReading(pitch) {
+      pitchBuffer.push(pitch);
+      if (pitchBuffer.length > PITCH_BUFFER_SIZE) pitchBuffer.shift();
+
+      const stablePitch = getMedianValue(pitchBuffer);
+      smoothFreq = stablePitch;
+
+      let detectedNote, rawCents, targetFrequency;
+
+      if (activeInstrument === 'chromatic') {
+        const chromData = getNoteFromFrequency(stablePitch);
+        detectedNote = chromData.noteNameStr;
+        rawCents = chromData.cents;
+        targetFrequency = chromData.targetFreq;
+        const baseNote = detectedNote.replace(/\d/g, "");
+        highlightButton(`pKey-${baseNote}4`);
+      } else if (activeInstrument === 'charango') {
+        if (currentSubmode === 'auto') {
+          const closest = charangoStrings.reduce((prev, curr) => 
+            Math.abs(curr.freq - stablePitch) < Math.abs(prev.freq - stablePitch) ? curr : prev
+          );
+          detectedNote = closest["name"];
+          targetFrequency = closest.freq;
+          rawCents = 1200 * Math.log2(stablePitch / closest.freq);
+          highlightButton(closest["id"]);
+        } else {
+          detectedNote = selectedManualName;
+          targetFrequency = selectedManualFreq;
+          rawCents = 1200 * Math.log2(stablePitch / selectedManualFreq);
+        }
+      } else {
+        // Guitarra
+        const currentGuitarArray = guitarTuningMode === 'dropD' ? guitarDropD : guitarStandard;
+        if (currentSubmode === 'auto') {
+          const closest = currentGuitarArray.reduce((prev, curr) => 
+            Math.abs(curr.freq - stablePitch) < Math.abs(prev.freq - stablePitch) ? curr : prev
+          );
+          detectedNote = closest["name"];
+          targetFrequency = closest.freq;
+          rawCents = 1200 * Math.log2(stablePitch / closest.freq);
+          highlightButton(closest["id"]);
+        } else {
+          detectedNote = selectedManualName;
+          targetFrequency = selectedManualFreq;
+          rawCents = 1200 * Math.log2(stablePitch / selectedManualFreq);
+        }
+      }
+
+      smoothCents = rawCents;
+
+      const rotationAngle = Math.max(-50, Math.min(50, smoothCents));
+      const needleEl = document.getElementById('needle');
+      const noteNameEl = document.getElementById('noteName');
+      const centsTextEl = document.getElementById('centsText');
+
+      needleEl["style"]["transform"] = `translateX(-50%) rotate(${rotationAngle}deg)`;
+      document.getElementById('frequencyText').textContent = `${smoothFreq.toFixed(1)} Hz`;
+      noteNameEl.textContent = detectedNote;
+
+      if (Math.abs(smoothCents) <= 3.5) {
+        needleEl.classList.add('in-tune');
+        noteNameEl.classList.add('in-tune');
+        centsTextEl.textContent = "¡AFINADO!";
+        centsTextEl["style"]["color"] = "var(--accent-green)";
+
+        if (!wasInTune) {
+          playInTuneSound();
+          wasInTune = true;
+        }
+      } else {
+        needleEl.classList.remove('in-tune');
+        noteNameEl.classList.remove('in-tune');
+        
+        if (Math.abs(smoothCents) > 5) {
+          wasInTune = false;
+        }
+
+        if (smoothCents < 0) {
+          centsTextEl.textContent = `Bajo (-${Math.abs(Math.round(smoothCents))} cents)`;
+          centsTextEl["style"]["color"] = "var(--accent-orange)";
+        } else {
+          centsTextEl.textContent = `Alto (+${Math.round(smoothCents)} cents)`;
+          centsTextEl["style"]["color"] = "var(--accent-red)";
+        }
+      }
+    }
+
     function updatePitch() {
       if (!isListening || !analyser) return;
 
       const buf = new Float32Array(2048);
       analyser.getFloatTimeDomainData(buf);
       const sampleRate = sharedAudioCtx ? sharedAudioCtx.sampleRate : 44100;
-      const pitch = autoCorrelate(buf, sampleRate);
+      const { pitch, rms } = autoCorrelate(buf, sampleRate);
 
-      if (pitch !== -1 && pitch > 50 && pitch < 1000) {
-        // Suavizado de frecuencia
-        smoothFreq = smoothFreq === 0 ? pitch : smoothFreq * 0.75 + pitch * 0.25;
+      if (rms >= attackThreshold && pitch > 50 && pitch < 1000) {
+        if (holdTimeout) clearTimeout(holdTimeout);
         
-        let detectedNote, rawCents, targetFrequency;
-
-        if (activeInstrument === 'chromatic') {
-          const chromData = getNoteFromFrequency(smoothFreq);
-          detectedNote = chromData.noteNameStr;
-          rawCents = chromData.cents;
-          targetFrequency = chromData.targetFreq;
-          const baseNote = detectedNote.replace(/\d/g, "");
-          highlightButton(`pKey-${baseNote}4`);
-        } else if (activeInstrument === 'charango') {
-          if (currentSubmode === 'auto') {
-            const closest = charangoStrings.reduce((prev, curr) => 
-              Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
-            );
-            detectedNote = closest["name"];
-            targetFrequency = closest.freq;
-            rawCents = 1200 * Math.log2(smoothFreq / closest.freq);
-            highlightButton(closest["id"]);
-          } else {
-            detectedNote = selectedManualName;
-            targetFrequency = selectedManualFreq;
-            rawCents = 1200 * Math.log2(smoothFreq / selectedManualFreq);
-          }
-        } else {
-          // Guitarra
-          const currentGuitarArray = guitarTuningMode === 'dropD' ? guitarDropD : guitarStandard;
-          if (currentSubmode === 'auto') {
-            const closest = currentGuitarArray.reduce((prev, curr) => 
-              Math.abs(curr.freq - smoothFreq) < Math.abs(prev.freq - smoothFreq) ? curr : prev
-            );
-            detectedNote = closest["name"];
-            targetFrequency = closest.freq;
-            rawCents = 1200 * Math.log2(smoothFreq / closest.freq);
-            highlightButton(closest["id"]);
-          } else {
-            detectedNote = selectedManualName;
-            targetFrequency = selectedManualFreq;
-            rawCents = 1200 * Math.log2(smoothFreq / selectedManualFreq);
-          }
-        }
-
-        // Filtro de suavizado inercial para la aguja
-        smoothCents = smoothCents * 0.82 + rawCents * 0.18;
-
-        // Animación de Aguja
-        const rotationAngle = Math.max(-50, Math.min(50, smoothCents));
-        const needleEl = document.getElementById('needle');
-        const noteNameEl = document.getElementById('noteName');
-        const centsTextEl = document.getElementById('centsText');
-
-        needleEl["style"]["transform"] = `translateX(-50%) rotate(${rotationAngle}deg)`;
-        document.getElementById('frequencyText').textContent = `${smoothFreq.toFixed(1)} Hz`;
-        noteNameEl.textContent = detectedNote;
-
-        // Tolerancia de Afinación en la Zona Verde (±3.5 cents)
-        if (Math.abs(smoothCents) <= 3.5) {
-          needleEl.classList.add('in-tune');
-          noteNameEl.classList.add('in-tune');
-          centsTextEl.textContent = "¡AFINADO!";
-          centsTextEl["style"]["color"] = "var(--accent-green)";
-
-          if (!wasInTune) {
-            playInTuneSound(); // Sonido "Chi-Chin" de acierto
-            wasInTune = true;
-          }
-        } else {
-          needleEl.classList.remove('in-tune');
-          noteNameEl.classList.remove('in-tune');
-          
-          if (Math.abs(smoothCents) > 5) {
-            wasInTune = false; // Rearmar sonido cuando se desafina
-          }
-
-          if (smoothCents < 0) {
-            centsTextEl.textContent = `Bajo (-${Math.abs(Math.round(smoothCents))} cents)`;
-            centsTextEl["style"]["color"] = "var(--accent-orange)";
-          } else {
-            centsTextEl.textContent = `Alto (+${Math.round(smoothCents)} cents)`;
-            centsTextEl["style"]["color"] = "var(--accent-red)";
-          }
-        }
+        processPitchReading(pitch);
+        isHoldingPitch = true;
+        holdTimeout = setTimeout(() => { isHoldingPitch = false; }, 1350);
+      } 
+      else if (!isHoldingPitch && pitch > 50 && pitch < 1000 && rms >= 0.018) {
+        processPitchReading(pitch);
       }
 
       requestAnimationFrame(updatePitch);
